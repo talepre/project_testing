@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- python -m SimpleHTTPServer 8000 FF4FB3 -->
+    <title>Erlang - Final project</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <style type="text/css">
+    @import url(http://fonts.googleapis.com/css?family=Raleway:400,100,200,300,500,600,700);
+@import url(http://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+body {
+  font-family: "Raleway", "Lucida Grande", "Helvetica Neue", "Helvetica", "Arial", "Verdana", "sans-serif";
+}
+
+.remark-slide-content {
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#2870a4), to(#222d51));
+  background: -webkit-linear-gradient(top, #2870a4, #222d51);
+  background: -moz-linear-gradient(top, #2870a4, #222d51);
+  background: -ms-linear-gradient(top, #2870a4, #222d51);
+  color: #fff;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Raleway';
+  font-weight: normal;
+}
+
+.remark-code,
+.remark-inline-code {
+  font-family: 'Ubuntu Mono';
+}
+
+.fullscreen {
+  padding: 0;
+}
+
+.fullscreen img {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate( -50%, 0);
+  width: 50%;
+}
+
+.fullscreen-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 33%;
+
+  background:rgba(0, 0, 0, .75);
+  font-size: 2em;
+  color: #fff;
+  text-align: center;
+}
+
+.fullscreen-overlay small {
+  color: #08c;
+}
+
+.remark-code.hljs  {
+  border-radius: 5px;
+  padding: 20px;
+}
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+class: fullscreen
+
+<div class="fullscreen-overlay">
+  <p>Project presentation<small style="display: block;">Testing online.ntnu.no with quickcheck</small></p>
+</div>
+
+---
+
+class: middle, center
+
+Online.ntnu.no
+
+Selenium
+
+Junit tests
+
+Quickcheck tests
+
+Statemachine
+
+Challenges
+
+Use
+
+---
+
+# Online.ntnu.no
+
+- Student organization site
+
+- Access to admin dashboard
+
+- More features
+
+- Something I use
+
+---
+
+# Selenium
+
+- Automates browsers
+
+- Support for different browsers
+
+- IDE in firefox for generating test cases
+
+- Support againts Junit
+
+---
+
+# Selenium example
+
+![Selenium](img/seleniummin.png)
+
+---
+
+# Junit
+
+- Software test for specific behaviour
+
+- Small piece of code tested
+
+---
+
+# Junit example
+
+``` java
+ public void testExportevents() throws Exception {
+    // Get events page
+    driver.get(baseUrl + "/events");
+    // Click export button
+    driver.findElement(By.xpath("//button[@type='button']")).click();
+    // Check number of ICS elements
+    assertEquals(driver.findElements(By.linkText("ICS")).size(), 1);
+    // Log in
+    driver.findElement(By.xpath("//nav[@id='mainnav']/div/ul[3]/li/a")).click();
+    driver.findElement(By.id("id_username")).clear();
+    driver.findElement(By.id("id_username")).sendKeys("talep");
+    driver.findElement(By.id("id_password")).clear();
+    driver.findElement(By.id("id_password")).sendKeys("OnlineErlang");
+    driver.findElement(By.cssSelector("button.btn.btn-primary")).click();
+    // Get events page
+    driver.get(baseUrl + "/events");
+    // Click export button
+    driver.findElement(By.xpath("//button[@type='button']")).click();
+    // Check number og ICS elements
+    assertEquals(driver.findElements(By.linkText("ICS")).size(), 2);
+    // Log out
+    driver.findElement(By.xpath("//nav[@id='mainnav']/div/ul[3]/li/a")).click();
+    driver.findElement(By.linkText("Logg ut")).click();
+  }
+
+```
+
+---
+
+# Quickcheck
+
+- Check general properties the system should always satisfy
+
+- Use generators to check different cases
+
+- Connected to Java with JavaErlang library
+
+---
+
+# Quickcheck example
+
+``` erlang
+% Certifies nr of ICS elements in export list
+prop_export_events(Driver) ->
+  ?FORALL(Login,oneof([true, false]),
+    begin
+      io:format("Case: ~p~n", [Login]),
+      case Login of 
+        true ->
+          login(Driver,"talep","OnlineErlang"),
+          ICSElements = export_events(Driver),
+          java:call(Driver,get,["https://online.ntnu.no/auth/logout/"]),
+          ICSElements == 2;
+        false ->
+          ICSElements = export_events(Driver),
+          ICSElements == 1
+      end
+    end). 
+
+```
+
+---
+
+# Quickcheck example
+
+``` erlang
+login(Driver,Login,Password) ->
+  io:format("login~n"),
+  N = java:node_id(Driver),
+  java:call(Driver,get,["https://online.ntnu.no/auth/login/"]),
+  % Write username
+  timer:sleep(1000),
+  UsernameBy = java:call_static(N,'org.openqa.selenium.By',xpath,["(//input[@id='id_username'])[2]"]),
+  UsernameElement = java:call(Driver,findElement,[UsernameBy]),
+  java:call(UsernameElement,sendKeys,[[java:list_to_string(N,Login)]]),
+  % Write password
+  PasswdBy = java:call_static(N,'org.openqa.selenium.By',xpath,["(//input[@id='id_password' or @id='password'])[2]"]),
+  PasswdElement = java:call(Driver,findElement,[PasswdBy]),
+  java:call(PasswdElement,sendKeys,[[java:list_to_string(N,Password)]]),
+  % Click login button
+  ButtonBy = java:call_static(N,'org.openqa.selenium.By',cssSelector,["button.btn.btn-success"]),
+  ButtonElement = java:call(Driver,findElement,[ButtonBy]),
+  java:call(ButtonElement,click,[]).
+```
+
+---
+
+# Quickcheck example
+
+``` erlang
+export_events(Driver) ->
+  N = java:node_id(Driver),
+  java:call(Driver,get,["https://online.ntnu.no/events/"]),
+  % Press export button
+  ExportBtnBy = java:call_static(N,'org.openqa.selenium.By',xpath,["//button[@type='button']"]),
+  ExportBtnElement = java:call(Driver,findElement,[ExportBtnBy]),
+  java:call(ExportBtnElement,click,[]),
+  % Find ICS elements
+  ICSBy = java:call_static(N,'org.openqa.selenium.By',linkText,["ICS"]),
+  ICSElements = java:call(Driver,findElements,[ICSBy]),
+  java:call(ICSElements,size,[]).
+```
+
+---
+
+# Statemachine
+
+- Model the different states
+
+- Keep tracks of current state
+
+- Pre and post conditions
+
+---
+
+# Statemachine example
+
+
+``` erlang
+export_events_user_pre(State) ->
+  State#state.started andalso State#state.logged_in.
+export_events_user_args(State) ->
+  [State#state.driver].
+export_events_user(Driver) -> 
+  online_test:export_events(Driver).
+export_events_user_post(_State,_,Result) -> 
+  io:format("ICS: ~p~n", [Result]),
+  Result == 2.
+
+export_events_pre(State) ->
+  State#state.started andalso not(State#state.logged_in).
+export_events_args(State) ->
+  [State#state.driver].
+export_events(Driver) -> 
+  online_test:export_events(Driver).
+export_events_post(_State,_,Result) -> 
+  io:format("ICS: ~p~n", [Result]),
+  Result == 1.
+```
+---
+
+# Challenges
+
+- Time-consuming
+
+- Internet
+
+- State
+
+- Error: too many tries
+
+- GetText vs GetTitle
+
+- is_element_present(By)
+
+- Element id varies, id_password/password
+
+- Element not clickable
+
+---
+
+# Use
+
+- During development
+
+- Altering content
+
+- Not so useful in this case
+
+---
+
+class: middle, center
+
+# QUESTIONS?
+
+
+
+
+    </textarea>
+    <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
